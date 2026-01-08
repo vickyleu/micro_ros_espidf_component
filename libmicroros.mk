@@ -91,14 +91,14 @@ $(EXTENSIONS_DIR)/micro_ros_src/src:
 	$(EXTENSIONS_DIR)/scripts/git_clone_retry.sh https://github.com/micro-ROS/micro_ros_utilities jazzy src/micro_ros_utilities; \
 	$(EXTENSIONS_DIR)/scripts/git_clone_retry.sh https://github.com/ros2/rosidl_core jazzy src/rosidl_core; \
 	python3 "$(EXTENSIONS_DIR)/scripts/patch_rosidl_runtime_c.py" "src"; \
-	# disable expected-hash asserts (embedded build)
+	: # disable expected-hash asserts (embedded build); \
 	test -f src/rosidl/rosidl_runtime_c/src/type_description/field__description.c && \
 		sed -i '/__EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/field__description.c || true; \
 	test -f src/rosidl/rosidl_runtime_c/src/type_description/individual_type_description__description.c && \
 		sed -i '/__EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/individual_type_description__description.c || true; \
 	test -f src/rosidl/rosidl_runtime_c/src/type_description/type_description__description.c && \
 		sed -i '/__EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/type_description__description.c || true; \
-	# remove remaining assert(memcmp...) lines that still reference EXPECTED_HASH
+	: # remove remaining assert(memcmp...) lines that still reference EXPECTED_HASH; \
 	test -f src/rosidl/rosidl_runtime_c/src/type_description/field__description.c && \
 		sed -i '/assert(0 == memcmp.*EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/field__description.c || true; \
 	test -f src/rosidl/rosidl_runtime_c/src/type_description/individual_type_description__description.c && \
