@@ -2,6 +2,7 @@ option(BUILD_ETHERNET_INTERFACE "Build ethernet interface support" OFF)
 option(BUILD_WLAN_INTERFACE "Build wlan interface support" ON)
 
 set(COMPONENT_SRC "")
+set(MICROROS_COMPONENT_INCLUDE_DIRS "network_interfaces" "include" "include/include")
 
 if(BUILD_ETHERNET_INTERFACE)
     list(APPEND COMPONENT_SRC "network_interfaces/uros_ethernet_netif.c")
@@ -11,8 +12,17 @@ if(BUILD_WLAN_INTERFACE)
     list(APPEND COMPONENT_SRC "network_interfaces/uros_wlan_netif.c")
 endif()
 
+file(GLOB microros_generated_include_dirs LIST_DIRECTORIES true
+     "${CMAKE_CURRENT_LIST_DIR}/include/include/*")
+foreach(microros_generated_include_dir ${microros_generated_include_dirs})
+    if(IS_DIRECTORY ${microros_generated_include_dir})
+        get_filename_component(microros_generated_include_name ${microros_generated_include_dir} NAME)
+        list(APPEND MICROROS_COMPONENT_INCLUDE_DIRS "include/include/${microros_generated_include_name}")
+    endif()
+endforeach()
+
 idf_component_register(SRCS ${COMPONENT_SRC}
-                       INCLUDE_DIRS "network_interfaces"
+                       INCLUDE_DIRS ${MICROROS_COMPONENT_INCLUDE_DIRS}
                        REQUIRES nvs_flash esp_wifi esp_eth lwip)
 
 if(CMAKE_GENERATOR STREQUAL "Unix Makefiles")
@@ -103,6 +113,16 @@ foreach(include_folder ${include_folders})
     if(IS_DIRECTORY ${include_folder})
         get_filename_component(folder_name ${include_folder} NAME)
         target_include_directories(libmicroros-prebuilt INTERFACE ${COMPONENT_DIR}/include/${folder_name})
+    endif()
+endforeach()
+
+file(GLOB microros_generated_folders LIST_DIRECTORIES true CONFIGURE_DEPENDS
+     ${COMPONENT_DIR}/include/include/*)
+foreach(microros_generated_folder ${microros_generated_folders})
+    if(IS_DIRECTORY ${microros_generated_folder})
+        get_filename_component(folder_name ${microros_generated_folder} NAME)
+        target_include_directories(libmicroros-prebuilt INTERFACE
+                                   ${COMPONENT_DIR}/include/include/${folder_name})
     endif()
 endforeach()
 

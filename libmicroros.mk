@@ -3,6 +3,12 @@ UROS_DIR = $(EXTENSIONS_DIR)/micro_ros_src
 BUILD_DIR ?= $(EXTENSIONS_DIR)/build
 
 DEBUG ?= 0
+# 每次构建前清理构建产物（避免只因 log 存在而要求 clean）
+CLEAN_BEFORE_BUILD ?= 1
+PRE_CLEAN :=
+ifeq ($(CLEAN_BEFORE_BUILD),1)
+PRE_CLEAN := $(EXTENSIONS_DIR)/.microros_preclean
+endif
 
 # 默认 C 标准（避免 -DUCLIENT_C_STANDARD= 为空导致 CMake set_target_properties 参数错位）
 # rcutils 使用 static_assert，需要 C11 及以上
@@ -11,6 +17,38 @@ C_STANDARD ?= 11
 SDKCONFIG_DIR ?= $(shell if [ -n "$(CARGO_TARGET_DIR)" ]; then ls -d "$(CARGO_TARGET_DIR)"/xtensa-esp32s3-espidf/*/build/esp-idf-sys-*/out/build/config 2>/dev/null | head -n 1; fi)
 SDKCONFIG_BUILD_DIR ?= $(shell if [ -n "$(SDKCONFIG_DIR)" ]; then dirname "$(SDKCONFIG_DIR)"; fi)
 IDF_SDKCONFIG_INCLUDES := $(if $(strip $(SDKCONFIG_DIR)),-I$(SDKCONFIG_DIR) -I$(SDKCONFIG_BUILD_DIR) -I$(SDKCONFIG_BUILD_DIR)/include,)
+IDF_CORE_INCLUDES :=
+ifneq ($(strip $(IDF_PATH)),)
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/esp_system/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/freertos/FreeRTOS-Kernel/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/freertos/FreeRTOS-Kernel/portable/xtensa/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/freertos/FreeRTOS-Kernel/portable/xtensa/include/freertos
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/freertos/esp_additions/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/freertos/config/include/freertos
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/freertos/config/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/freertos/config/xtensa/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/xtensa/include
+	ifneq ($(strip $(IDF_TARGET)),)
+		IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/xtensa/$(IDF_TARGET)/include
+	endif
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/esp_hw_support/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/esp_common/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/heap/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/esp_rom/include
+	ifneq ($(strip $(IDF_TARGET)),)
+		IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/soc/$(IDF_TARGET)/include
+		IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/soc/$(IDF_TARGET)/register
+	endif
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/newlib/platform_include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/lwip/port/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/lwip/port/freertos/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/lwip/port/esp32xx/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/lwip/lwip/src/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/lwip/lwip/src/include/compat/posix
+endif
+IDF_INCLUDES := -I$(EXTENSIONS_DIR)/include_override $(IDF_INCLUDES) $(IDF_CORE_INCLUDES)
+
+INSTALL_STAMP := $(UROS_DIR)/.install.stamp
 
 ifeq ($(DEBUG), 1)
 	BUILD_TYPE = Debug
@@ -123,7 +161,7 @@ $(EXTENSIONS_DIR)/micro_ros_src/src:
 	test -f src/extra_packages/extra_packages.repos && cd src/extra_packages && vcs import --input extra_packages.repos || :;
 
 
-$(EXTENSIONS_DIR)/micro_ros_src/install: $(EXTENSIONS_DIR)/esp32_toolchain.cmake $(EXTENSIONS_DIR)/micro_ros_dev/install $(EXTENSIONS_DIR)/micro_ros_src/src
+$(INSTALL_STAMP): $(EXTENSIONS_DIR)/esp32_toolchain.cmake $(EXTENSIONS_DIR)/micro_ros_dev/install $(EXTENSIONS_DIR)/micro_ros_src/src | $(PRE_CLEAN)
 	cd $(UROS_DIR); \
 	unset AMENT_PREFIX_PATH; \
 	PATH="$(subst /opt/ros/$(ROS_DISTRO)/bin,,$(PATH))"; \
@@ -142,11 +180,16 @@ $(EXTENSIONS_DIR)/micro_ros_src/install: $(EXTENSIONS_DIR)/esp32_toolchain.cmake
 		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 		-DCMAKE_TOOLCHAIN_FILE=$(EXTENSIONS_DIR)/esp32_toolchain.cmake \
 		-DCMAKE_VERBOSE_MAKEFILE=OFF \
-        -DIDF_INCLUDES='${IDF_INCLUDES} ${IDF_SDKCONFIG_INCLUDES}' \
+		-DIDF_INCLUDES='${IDF_INCLUDES} ${IDF_SDKCONFIG_INCLUDES}' \
 		-DCMAKE_C_STANDARD=$(C_STANDARD) \
 		-DUCLIENT_C_STANDARD=$(C_STANDARD);
+	touch $(INSTALL_STAMP)
 
-patch_atomic:$(EXTENSIONS_DIR)/micro_ros_src/install
+$(EXTENSIONS_DIR)/.microros_preclean:
+	rm -rf $(UROS_DIR)/build $(UROS_DIR)/install $(UROS_DIR)/log $(INSTALL_STAMP)
+	touch $(EXTENSIONS_DIR)/.microros_preclean
+
+patch_atomic:$(INSTALL_STAMP)
 # Workaround https://github.com/micro-ROS/micro_ros_espidf_component/issues/18
 ifeq ($(IDF_TARGET),$(filter $(IDF_TARGET),esp32s2 esp32c3 esp32c6))
 		echo $(UROS_DIR)/atomic_workaround; \
@@ -188,7 +231,7 @@ ifeq ($(IDF_TARGET),$(filter $(IDF_TARGET),esp32))
 		rm -rf $(UROS_DIR)/atomic_workaround;
 endif
 
-$(EXTENSIONS_DIR)/libmicroros.a: $(EXTENSIONS_DIR)/micro_ros_src/install patch_atomic
+$(EXTENSIONS_DIR)/libmicroros.a: $(INSTALL_STAMP) patch_atomic
 	mkdir -p $(UROS_DIR)/libmicroros; cd $(UROS_DIR)/libmicroros; \
 	for file in $$(find $(UROS_DIR)/install/lib/ -name '*.a'); do \
 		folder=$$(echo $$file | sed -E "s/(.+)\/(.+).a/\2/"); \
