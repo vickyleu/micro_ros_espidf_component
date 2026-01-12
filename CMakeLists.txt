@@ -74,6 +74,12 @@ foreach(package ${PACKAGES})
     string(APPEND IDF_INCLUDES "${${package}_includes_string}")
 endforeach()
 
+# Prefer the SDK's generated sdkconfig.h from the active IDF build.
+set(MICROROS_SDKCONFIG_DIR "${CMAKE_BINARY_DIR}/config")
+if(NOT EXISTS "${MICROROS_SDKCONFIG_DIR}/sdkconfig.h")
+    set(MICROROS_SDKCONFIG_DIR "")
+endif()
+
 execute_process(
     WORKING_DIRECTORY ${COMPONENT_DIR}
     RESULT_VARIABLE libmicroros_ret
@@ -91,6 +97,7 @@ execute_process(
                 IDF_INCLUDES=${IDF_INCLUDES}
                 IDF_PATH=${IDF_PATH}
                 IDF_TARGET=${IDF_TARGET}
+                MICROROS_SDKCONFIG_DIR=${MICROROS_SDKCONFIG_DIR}
                 APP_COLCON_META=${APP_COLCON_META}
                 IDF_VERSION_MAJOR=${IDF_VERSION_MAJOR}
                 IDF_VERSION_MINOR=${IDF_VERSION_MINOR}
