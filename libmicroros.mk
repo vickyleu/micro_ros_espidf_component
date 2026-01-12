@@ -183,6 +183,7 @@ $(INSTALL_STAMP): $(EXTENSIONS_DIR)/esp32_toolchain.cmake $(EXTENSIONS_DIR)/micr
 		-DIDF_INCLUDES='${IDF_INCLUDES} ${IDF_SDKCONFIG_INCLUDES}' \
 		-DCMAKE_C_STANDARD=$(C_STANDARD) \
 		-DUCLIENT_C_STANDARD=$(C_STANDARD);
+	test -d "$(UROS_DIR)/install/lib" || (echo "micro-ROS install/lib 不存在，colcon 可能失败"; exit 1)
 	touch $(INSTALL_STAMP)
 
 $(EXTENSIONS_DIR)/.microros_preclean:
@@ -232,6 +233,7 @@ ifeq ($(IDF_TARGET),$(filter $(IDF_TARGET),esp32))
 endif
 
 $(EXTENSIONS_DIR)/libmicroros.a: $(INSTALL_STAMP) patch_atomic
+	test -d "$(UROS_DIR)/install/lib" || (echo "micro-ROS install/lib 不存在，无法打包 libmicroros.a"; exit 1)
 	mkdir -p $(UROS_DIR)/libmicroros; cd $(UROS_DIR)/libmicroros; \
 	for file in $$(find $(UROS_DIR)/install/lib/ -name '*.a'); do \
 		folder=$$(echo $$file | sed -E "s/(.+)\/(.+).a/\2/"); \
