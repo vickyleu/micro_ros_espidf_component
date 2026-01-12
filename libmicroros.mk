@@ -14,7 +14,8 @@ endif
 # rcutils 使用 static_assert，需要 C11 及以上
 C_STANDARD ?= 11
 # sdkconfig.h 目录（从 esp-idf-sys 构建产物中自动发现）
-TARGET_TRIPLE ?= xtensa-$(IDF_TARGET)-espidf
+IDF_TARGET_LOCAL := $(if $(strip $(IDF_TARGET)),$(IDF_TARGET),esp32s3)
+TARGET_TRIPLE ?= xtensa-$(IDF_TARGET_LOCAL)-espidf
 SDKCONFIG_DIR ?= $(shell \
 if [ -n "$(CARGO_TARGET_DIR)" ]; then \
   find "$(CARGO_TARGET_DIR)/$(TARGET_TRIPLE)" -path "*/build/esp-idf-sys-*/out/build/config" -type d 2>/dev/null | head -n 1; \
@@ -34,17 +35,13 @@ ifneq ($(strip $(IDF_PATH)),)
 	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/freertos/config/include
 	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/freertos/config/xtensa/include
 	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/xtensa/include
-	ifneq ($(strip $(IDF_TARGET)),)
-		IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/xtensa/$(IDF_TARGET)/include
-	endif
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/xtensa/$(IDF_TARGET_LOCAL)/include
 	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/esp_hw_support/include
 	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/esp_common/include
 	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/heap/include
 	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/esp_rom/include
-	ifneq ($(strip $(IDF_TARGET)),)
-		IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/soc/$(IDF_TARGET)/include
-		IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/soc/$(IDF_TARGET)/register
-	endif
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/soc/$(IDF_TARGET_LOCAL)/include
+	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/soc/$(IDF_TARGET_LOCAL)/register
 	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/newlib/platform_include
 	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/lwip/port/include
 	IDF_CORE_INCLUDES += -I$(IDF_PATH)/components/lwip/port/freertos/include
