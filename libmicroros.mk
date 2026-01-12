@@ -14,7 +14,13 @@ endif
 # rcutils 使用 static_assert，需要 C11 及以上
 C_STANDARD ?= 11
 # sdkconfig.h 目录（从 esp-idf-sys 构建产物中自动发现）
-SDKCONFIG_DIR ?= $(shell if [ -n "$(CARGO_TARGET_DIR)" ]; then ls -d "$(CARGO_TARGET_DIR)"/xtensa-esp32s3-espidf/*/build/esp-idf-sys-*/out/build/config 2>/dev/null | head -n 1; fi)
+TARGET_TRIPLE ?= xtensa-$(IDF_TARGET)-espidf
+SDKCONFIG_DIR ?= $(shell \
+if [ -n "$(CARGO_TARGET_DIR)" ]; then \
+  find "$(CARGO_TARGET_DIR)/$(TARGET_TRIPLE)" -path "*/build/esp-idf-sys-*/out/build/config" -type d 2>/dev/null | head -n 1; \
+else \
+  find "$(EXTENSIONS_DIR)/../.." -path "*/target/$(TARGET_TRIPLE)/*/build/esp-idf-sys-*/out/build/config" -type d 2>/dev/null | head -n 1; \
+fi)
 SDKCONFIG_BUILD_DIR ?= $(shell if [ -n "$(SDKCONFIG_DIR)" ]; then dirname "$(SDKCONFIG_DIR)"; fi)
 IDF_SDKCONFIG_INCLUDES := $(if $(strip $(SDKCONFIG_DIR)),-I$(SDKCONFIG_DIR) -I$(SDKCONFIG_BUILD_DIR) -I$(SDKCONFIG_BUILD_DIR)/include,)
 IDF_CORE_INCLUDES :=
