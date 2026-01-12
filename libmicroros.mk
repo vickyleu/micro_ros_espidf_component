@@ -16,12 +16,13 @@ C_STANDARD ?= 11
 # sdkconfig.h 目录（从 esp-idf-sys 构建产物中自动发现）
 IDF_TARGET_LOCAL := $(if $(strip $(IDF_TARGET)),$(IDF_TARGET),esp32s3)
 TARGET_TRIPLE ?= xtensa-$(IDF_TARGET_LOCAL)-espidf
-SDKCONFIG_DIR ?= $(shell \
+SDKCONFIG_FILE ?= $(shell \
 if [ -n "$(CARGO_TARGET_DIR)" ]; then \
-  find "$(CARGO_TARGET_DIR)/$(TARGET_TRIPLE)" -path "*/build/esp-idf-sys-*/out/build/config" -type d 2>/dev/null | head -n 1; \
+  find "$(CARGO_TARGET_DIR)/$(TARGET_TRIPLE)" -path "*/build/esp-idf-sys-*/out/build/config/sdkconfig.h" -type f -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n 1 | cut -d' ' -f2-; \
 else \
-  find "$(EXTENSIONS_DIR)/../.." -path "*/target/$(TARGET_TRIPLE)/*/build/esp-idf-sys-*/out/build/config" -type d 2>/dev/null | head -n 1; \
+  find "$(EXTENSIONS_DIR)/../.." -path "*/target/$(TARGET_TRIPLE)/*/build/esp-idf-sys-*/out/build/config/sdkconfig.h" -type f -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n 1 | cut -d' ' -f2-; \
 fi)
+SDKCONFIG_DIR ?= $(shell if [ -n "$(SDKCONFIG_FILE)" ]; then dirname "$(SDKCONFIG_FILE)"; fi)
 SDKCONFIG_BUILD_DIR ?= $(shell if [ -n "$(SDKCONFIG_DIR)" ]; then dirname "$(SDKCONFIG_DIR)"; fi)
 IDF_SDKCONFIG_INCLUDES := $(if $(strip $(SDKCONFIG_DIR)),-I$(SDKCONFIG_DIR) -I$(SDKCONFIG_BUILD_DIR) -I$(SDKCONFIG_BUILD_DIR)/include,)
 IDF_CORE_INCLUDES :=
