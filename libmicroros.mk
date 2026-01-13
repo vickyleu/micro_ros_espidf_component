@@ -94,7 +94,11 @@ $(EXTENSIONS_DIR)/micro_ros_dev/install:
 	git clone -b jazzy https://github.com/ament/googletest src/googletest; \
 	git clone -b jazzy https://github.com/ros2/ament_cmake_ros src/ament_cmake_ros; \
 	git clone -b jazzy https://github.com/ament/ament_index src/ament_index; \
-	colcon build --cmake-args -DBUILD_TESTING=OFF -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=gcc;
+	IDF_PYTHON=$$(find $(HOME)/.espressif/python_env -name "python3" -path "*/bin/*" 2>/dev/null | head -1); \
+	if [ -n "$$IDF_PYTHON" ]; then \
+		export PATH=$$(dirname $$IDF_PYTHON):$$PATH; \
+	fi; \
+	colcon build --cmake-args -DBUILD_TESTING=OFF;
 
 $(EXTENSIONS_DIR)/micro_ros_src/src:
 	rm -rf micro_ros_src; \
@@ -131,18 +135,18 @@ $(EXTENSIONS_DIR)/micro_ros_src/src:
 	python3 "$(EXTENSIONS_DIR)/scripts/patch_rosidl_runtime_c.py" "src"; \
 	: # disable expected-hash asserts (embedded build); \
 	test -f src/rosidl/rosidl_runtime_c/src/type_description/field__description.c && \
-		sed -i '/__EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/field__description.c || true; \
+		sed -i '' '/__EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/field__description.c || true; \
 	test -f src/rosidl/rosidl_runtime_c/src/type_description/individual_type_description__description.c && \
-		sed -i '/__EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/individual_type_description__description.c || true; \
+		sed -i '' '/__EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/individual_type_description__description.c || true; \
 	test -f src/rosidl/rosidl_runtime_c/src/type_description/type_description__description.c && \
-		sed -i '/__EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/type_description__description.c || true; \
+		sed -i '' '/__EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/type_description__description.c || true; \
 	: # remove remaining assert(memcmp...) lines that still reference EXPECTED_HASH; \
 	test -f src/rosidl/rosidl_runtime_c/src/type_description/field__description.c && \
-		sed -i '/assert(0 == memcmp.*EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/field__description.c || true; \
+		sed -i '' '/assert(0 == memcmp.*EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/field__description.c || true; \
 	test -f src/rosidl/rosidl_runtime_c/src/type_description/individual_type_description__description.c && \
-		sed -i '/assert(0 == memcmp.*EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/individual_type_description__description.c || true; \
+		sed -i '' '/assert(0 == memcmp.*EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/individual_type_description__description.c || true; \
 	test -f src/rosidl/rosidl_runtime_c/src/type_description/type_description__description.c && \
-		sed -i '/assert(0 == memcmp.*EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/type_description__description.c || true; \
+		sed -i '' '/assert(0 == memcmp.*EXPECTED_HASH/d' src/rosidl/rosidl_runtime_c/src/type_description/type_description__description.c || true; \
     mkdir -p src/rosidl/rosidl_typesupport_introspection_cpp; \
     mkdir -p src/rcl_logging/rcl_logging_log4cxx; \
     mkdir -p src/rcl_logging/rcl_logging_spdlog; \
@@ -162,10 +166,10 @@ $(EXTENSIONS_DIR)/micro_ros_src/src:
 
 
 $(INSTALL_STAMP): $(EXTENSIONS_DIR)/esp32_toolchain.cmake $(EXTENSIONS_DIR)/micro_ros_dev/install $(EXTENSIONS_DIR)/micro_ros_src/src | $(PRE_CLEAN)
-	cd $(UROS_DIR); \
-	unset AMENT_PREFIX_PATH; \
-	PATH="$(subst /opt/ros/$(ROS_DISTRO)/bin,,$(PATH))"; \
-	. ../micro_ros_dev/install/local_setup.sh; \
+	cd $(UROS_DIR) && \
+	unset AMENT_PREFIX_PATH && \
+	export PATH="$(subst /opt/ros/$(ROS_DISTRO)/bin,,$(PATH))" && \
+	. ../micro_ros_dev/install/local_setup.sh && \
 	colcon build \
 		--merge-install \
 		--packages-ignore lttngpy \
