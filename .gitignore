@@ -4,5 +4,6 @@ src
 esp32_toolchain.cmake
 *.a
 build
+**/COLCON_IGNORE
 .microros_preclean
 include
