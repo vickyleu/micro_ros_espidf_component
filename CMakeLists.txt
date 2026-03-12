@@ -12,6 +12,9 @@ if(BUILD_WLAN_INTERFACE)
     list(APPEND COMPONENT_SRC "network_interfaces/uros_wlan_netif.c")
 endif()
 
+# Ensure include directories exist before idf_component_register checks them
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/include/include")
+
 file(GLOB microros_generated_include_dirs LIST_DIRECTORIES true
      "${CMAKE_CURRENT_LIST_DIR}/include/include/*")
 foreach(microros_generated_include_dir ${microros_generated_include_dirs})
@@ -80,31 +83,40 @@ if(NOT EXISTS "${MICROROS_SDKCONFIG_DIR}/sdkconfig.h")
     set(MICROROS_SDKCONFIG_DIR "")
 endif()
 
-execute_process(
-    WORKING_DIRECTORY ${COMPONENT_DIR}
-    RESULT_VARIABLE libmicroros_ret
-    COMMAND
-        ${submake} -j -f libmicroros.mk
-                X_CC=${CMAKE_C_COMPILER}
-                X_AR=${CMAKE_AR}
-                X_STRIP=${CMAKE_STRIP}
-                X_CFLAGS=${CMAKE_C_FLAGS}
-                X_CXX=${CMAKE_CXX_COMPILER}
-                X_CXXFLAGS=${CMAKE_CXX_FLAGS}
-                C_STANDARD=${CMAKE_C_STANDARD}
-                MIDDLEWARE=${MIDDLEWARE}
-                BUILD_DIR=${CMAKE_BINARY_DIR}
-                IDF_INCLUDES=${IDF_INCLUDES}
-                IDF_PATH=${IDF_PATH}
-                IDF_TARGET=${IDF_TARGET}
-                MICROROS_SDKCONFIG_DIR=${MICROROS_SDKCONFIG_DIR}
-                APP_COLCON_META=${APP_COLCON_META}
-                IDF_VERSION_MAJOR=${IDF_VERSION_MAJOR}
-                IDF_VERSION_MINOR=${IDF_VERSION_MINOR}
-                EXTRA_ROS_PACKAGES=${EXTRA_ROS_PACKAGES}
-)
-if(libmicroros_ret AND NOT libmicroros_ret EQUAL 0)
-  message(FATAL_ERROR "FAILED: ${libmicroros_ret}")
+# Check if pre-built libmicroros.a exists — skip source build if so
+if(EXISTS "${COMPONENT_DIR}/libmicroros.a" AND EXISTS "${COMPONENT_DIR}/include/include")
+    message(STATUS "Using pre-built libmicroros.a, skipping micro-ROS build")
+    set(libmicroros_ret 0)
+else()
+    message(STATUS "Building libmicroros from source (this may take a while)...")
+    # Remove stale toolchain file to ensure current compiler path is used
+    file(REMOVE "${COMPONENT_DIR}/esp32_toolchain.cmake")
+    execute_process(
+        WORKING_DIRECTORY ${COMPONENT_DIR}
+        RESULT_VARIABLE libmicroros_ret
+        COMMAND
+            ${submake} -j -f libmicroros.mk
+                    X_CC=${CMAKE_C_COMPILER}
+                    X_AR=${CMAKE_AR}
+                    X_STRIP=${CMAKE_STRIP}
+                    X_CFLAGS=${CMAKE_C_FLAGS}
+                    X_CXX=${CMAKE_CXX_COMPILER}
+                    X_CXXFLAGS=${CMAKE_CXX_FLAGS}
+                    C_STANDARD=${CMAKE_C_STANDARD}
+                    MIDDLEWARE=${MIDDLEWARE}
+                    BUILD_DIR=${CMAKE_BINARY_DIR}
+                    IDF_INCLUDES=${IDF_INCLUDES}
+                    IDF_PATH=${IDF_PATH}
+                    IDF_TARGET=${IDF_TARGET}
+                    MICROROS_SDKCONFIG_DIR=${MICROROS_SDKCONFIG_DIR}
+                    APP_COLCON_META=${APP_COLCON_META}
+                    IDF_VERSION_MAJOR=${IDF_VERSION_MAJOR}
+                    IDF_VERSION_MINOR=${IDF_VERSION_MINOR}
+                    EXTRA_ROS_PACKAGES=${EXTRA_ROS_PACKAGES}
+    )
+    if(libmicroros_ret AND NOT libmicroros_ret EQUAL 0)
+      message(FATAL_ERROR "FAILED: ${libmicroros_ret}")
+    endif()
 endif()
 
 add_prebuilt_library(libmicroros-prebuilt ""
