@@ -84,8 +84,6 @@ $(EXTENSIONS_DIR)/esp32_toolchain.cmake: $(EXTENSIONS_DIR)/esp32_toolchain.cmake
 	cat $(EXTENSIONS_DIR)/esp32_toolchain.cmake.in | \
 		sed "s/@CMAKE_C_COMPILER@/$(subst /,\/,$(X_CC))/g" | \
 		sed "s/@CMAKE_CXX_COMPILER@/$(subst /,\/,$(X_CXX))/g" | \
-		sed "s/@CFLAGS@/$(subst /,\/,$(CFLAGS_INTERNAL))/g" | \
-		sed "s/@CXXFLAGS@/$(subst /,\/,$(CXXFLAGS_INTERNAL))/g" | \
 		sed "s/@IDF_TARGET@/$(subst /,\/,$(IDF_TARGET))/g" | \
 		sed "s/@IDF_PATH@/$(subst /,\/,$(IDF_PATH))/g" | \
 		sed "s/@BUILD_CONFIG_DIR@/$(subst /,\/,$(BUILD_DIR)/config)/g" \
@@ -102,7 +100,7 @@ $(DEV_STAMP):
 	$(EXTENSIONS_DIR)/scripts/git_clone_retry.sh https://github.com/ament/googletest jazzy src/googletest; \
 	$(EXTENSIONS_DIR)/scripts/git_clone_retry.sh https://github.com/ros2/ament_cmake_ros jazzy src/ament_cmake_ros; \
 	$(EXTENSIONS_DIR)/scripts/git_clone_retry.sh https://github.com/ament/ament_index jazzy src/ament_index; \
-	colcon build --cmake-args -DBUILD_TESTING=OFF; \
+	CC=/usr/bin/gcc CXX=/usr/bin/g++ colcon build --cmake-args -DBUILD_TESTING=OFF; \
 	touch $(DEV_STAMP)
 
 $(EXTENSIONS_DIR)/micro_ros_src/src:
@@ -252,6 +250,8 @@ $(EXTENSIONS_DIR)/libmicroros.a: $(INSTALL_STAMP) patch_atomic
 		done; \
 		cd ..; rm -rf $$folder; \
 	done ; \
-	$(X_AR) rc -s libmicroros.a *.obj; cp libmicroros.a $(EXTENSIONS_DIR); \
+	objs=$$(find . -maxdepth 1 \( -name '*.o' -o -name '*.obj' \) -print); \
+	test -n "$$objs" || (echo "未找到可归档的 micro-ROS 目标文件"; exit 1); \
+	$(X_AR) rc -s libmicroros.a $$objs; cp libmicroros.a $(EXTENSIONS_DIR); \
 	cd ..; rm -rf libmicroros; \
 	cp -R $(UROS_DIR)/install/include $(EXTENSIONS_DIR)/include;

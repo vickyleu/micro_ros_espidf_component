@@ -77,6 +77,13 @@ foreach(package ${PACKAGES})
     string(APPEND IDF_INCLUDES "${${package}_includes_string}")
 endforeach()
 
+# ESP-IDF 6.x injects esp_libc platform wrapper headers into component includes.
+# Those wrappers rely on the normal IDF build's libc header ordering, but the
+# standalone micro-ROS colcon toolchain does not reproduce that environment.
+# Excluding platform_include here avoids rcutils pulling the wrapper layer and
+# then resolving into an incompatible libc header set.
+string(REPLACE " -I${IDF_PATH}/components/esp_libc/platform_include" "" IDF_INCLUDES "${IDF_INCLUDES}")
+
 # Prefer the SDK's generated sdkconfig.h from the active IDF build.
 set(MICROROS_SDKCONFIG_DIR "${CMAKE_BINARY_DIR}/config")
 if(NOT EXISTS "${MICROROS_SDKCONFIG_DIR}/sdkconfig.h")
@@ -89,6 +96,43 @@ if(EXISTS "${COMPONENT_DIR}/libmicroros.a" AND EXISTS "${COMPONENT_DIR}/include/
     set(libmicroros_ret 0)
 else()
     message(STATUS "Building libmicroros from source (this may take a while)...")
+    # --- Dynamic toolchain version fix ---
+    # Some IDF-bundled xtensa-esp-elf versions have linker bugs.
+    # Auto-detect the version from CMAKE_C_COMPILER and replace if buggy.
+    set(_BUGGY_VERSIONS "esp-14.2.0_20241119;esp-14.2.0_20251107")
+    string(REGEX MATCH "xtensa-esp-elf/([^/]+)/" _tc_match "${CMAKE_C_COMPILER}")
+    if(_tc_match)
+        set(_current_tc_ver "${CMAKE_MATCH_1}")
+        list(FIND _BUGGY_VERSIONS "${_current_tc_ver}" _buggy_idx)
+        if(NOT _buggy_idx EQUAL -1)
+            # Scan ~/.espressif/tools/xtensa-esp-elf/ for a non-buggy replacement
+            file(GLOB _tc_candidates "$ENV{HOME}/.espressif/tools/xtensa-esp-elf/*/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc")
+            set(_best_replacement "")
+            foreach(_cand ${_tc_candidates})
+                string(REGEX MATCH "xtensa-esp-elf/([^/]+)/" _cand_match "${_cand}")
+                if(_cand_match)
+                    set(_cand_ver "${CMAKE_MATCH_1}")
+                    list(FIND _BUGGY_VERSIONS "${_cand_ver}" _cand_buggy)
+                    if(_cand_buggy EQUAL -1)
+                        # Pick the lexicographically greatest (newest) version
+                        if("${_cand_ver}" STRGREATER "${_best_replacement}")
+                            set(_best_replacement "${_cand_ver}")
+                        endif()
+                    endif()
+                endif()
+            endforeach()
+            if(_best_replacement)
+                message(STATUS "micro-ROS: replacing buggy toolchain ${_current_tc_ver} -> ${_best_replacement}")
+                string(REPLACE "${_current_tc_ver}" "${_best_replacement}" CMAKE_C_COMPILER "${CMAKE_C_COMPILER}")
+                string(REPLACE "${_current_tc_ver}" "${_best_replacement}" CMAKE_CXX_COMPILER "${CMAKE_CXX_COMPILER}")
+                string(REPLACE "${_current_tc_ver}" "${_best_replacement}" CMAKE_AR "${CMAKE_AR}")
+                string(REPLACE "${_current_tc_ver}" "${_best_replacement}" CMAKE_STRIP "${CMAKE_STRIP}")
+            else()
+                message(WARNING "micro-ROS: toolchain ${_current_tc_ver} is buggy but no replacement found")
+            endif()
+        endif()
+    endif()
+    # --- End dynamic toolchain version fix ---
     # Remove stale toolchain file to ensure current compiler path is used
     file(REMOVE "${COMPONENT_DIR}/esp32_toolchain.cmake")
     execute_process(

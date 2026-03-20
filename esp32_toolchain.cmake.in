@@ -34,4 +34,9 @@ add_compile_definitions(ESP_PLATFORM LWIP_IPV4 LWIP_IPV6 PLATFORM_NAME_FREERTOS)
 include_directories(
         "@BUILD_CONFIG_DIR@"
         ${idf_path}/components/soc/${idf_target}/include
+        ${idf_path}/components/lwip/include
+        ${idf_path}/components/lwip/include/apps
+        ${idf_path}/components/lwip/lwip/src/include
+        ${idf_path}/components/lwip/lwip/src/include/compat/posix
+        ${idf_path}/components/lwip/port/esp32xx/include
     )
