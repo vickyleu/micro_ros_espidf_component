@@ -118,6 +118,7 @@ $(EXTENSIONS_DIR)/micro_ros_src/src:
 	$(EXTENSIONS_DIR)/scripts/git_clone_retry.sh https://github.com/micro-ROS/rcl jazzy src/rcl; \
 	$(EXTENSIONS_DIR)/scripts/git_clone_retry.sh https://github.com/ros2/rclc jazzy src/rclc; \
 	$(EXTENSIONS_DIR)/scripts/git_clone_retry.sh https://github.com/micro-ROS/rcutils jazzy src/rcutils; \
+	$(EXTENSIONS_DIR)/scripts/git_clone_retry.sh https://github.com/ros2/rcpputils jazzy src/rcpputils; \
 	$(EXTENSIONS_DIR)/scripts/git_clone_retry.sh https://github.com/micro-ROS/micro_ros_msgs jazzy src/micro_ros_msgs; \
 	$(EXTENSIONS_DIR)/scripts/git_clone_retry.sh https://github.com/micro-ROS/rosidl_typesupport jazzy src/rosidl_typesupport; \
 	$(EXTENSIONS_DIR)/scripts/git_clone_retry.sh https://github.com/micro-ROS/rosidl_typesupport_microxrcedds jazzy src/rosidl_typesupport_microxrcedds; \
@@ -156,6 +157,13 @@ $(EXTENSIONS_DIR)/micro_ros_src/src:
     mkdir -p src/rclc/rclc_examples; \
 	mkdir -p src/rcl/rcl_yaml_param_parser; \
 	mkdir -p src/ros2_tracing/test_tracetools; \
+	mkdir -p src/ros2_tracing/test_tracetools_launch; \
+	mkdir -p src/ros2_tracing/test_ros2trace; \
+	mkdir -p src/ros2_tracing/tracetools_test; \
+	mkdir -p src/ros2_tracing/tracetools_launch; \
+	mkdir -p src/ros2_tracing/tracetools_trace; \
+	mkdir -p src/ros2_tracing/tracetools_read; \
+	mkdir -p src/ros2_tracing/ros2trace; \
 	mkdir -p src/ros2_tracing/lttngpy; \
     touch src/rosidl/rosidl_typesupport_introspection_cpp/COLCON_IGNORE; \
     touch src/rcl_logging/rcl_logging_log4cxx/COLCON_IGNORE; \
@@ -163,6 +171,13 @@ $(EXTENSIONS_DIR)/micro_ros_src/src:
     touch src/rclc/rclc_examples/COLCON_IGNORE; \
 	touch src/rcl/rcl_yaml_param_parser/COLCON_IGNORE; \
 	touch src/ros2_tracing/test_tracetools/COLCON_IGNORE; \
+	touch src/ros2_tracing/test_tracetools_launch/COLCON_IGNORE; \
+	touch src/ros2_tracing/test_ros2trace/COLCON_IGNORE; \
+	touch src/ros2_tracing/tracetools_test/COLCON_IGNORE; \
+	touch src/ros2_tracing/tracetools_launch/COLCON_IGNORE; \
+	touch src/ros2_tracing/tracetools_trace/COLCON_IGNORE; \
+	touch src/ros2_tracing/tracetools_read/COLCON_IGNORE; \
+	touch src/ros2_tracing/ros2trace/COLCON_IGNORE; \
 	touch src/ros2_tracing/lttngpy/COLCON_IGNORE; \
 	test -n "$(EXTRA_ROS_PACKAGES)" && cp -rf $(EXTRA_ROS_PACKAGES) src/extra_packages || :; \
 	test -f src/extra_packages/extra_packages.repos && cd src/extra_packages && vcs import --input extra_packages.repos || :;
@@ -175,7 +190,7 @@ $(INSTALL_STAMP): $(EXTENSIONS_DIR)/esp32_toolchain.cmake $(DEV_STAMP) $(EXTENSI
 	. ../micro_ros_dev/install/local_setup.sh; \
 	colcon build \
 		--merge-install \
-		--packages-ignore lttngpy \
+		--packages-ignore lttngpy rcl_logging_log4cxx rcl_logging_spdlog rclc_examples test_tracetools test_tracetools_launch test_ros2trace tracetools_test tracetools_launch tracetools_trace tracetools_read ros2trace \
 		--packages-ignore-regex=.*_cpp \
 		--metas $(EXTENSIONS_DIR)/colcon.meta $(APP_COLCON_META) \
 		--cmake-args \
@@ -187,6 +202,9 @@ $(INSTALL_STAMP): $(EXTENSIONS_DIR)/esp32_toolchain.cmake $(DEV_STAMP) $(EXTENSI
 		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 		-DCMAKE_TOOLCHAIN_FILE=$(EXTENSIONS_DIR)/esp32_toolchain.cmake \
 		-DCMAKE_VERBOSE_MAKEFILE=OFF \
+		-DRCL_LOGGING_IMPLEMENTATION=rcl_logging_noop \
+		-DTRACETOOLS_DISABLED=ON \
+		-DTRACETOOLS_TRACEPOINTS_EXCLUDED=ON \
 		-DIDF_INCLUDES='${IDF_INCLUDES} ${IDF_SDKCONFIG_INCLUDES}' \
 		-DCMAKE_C_STANDARD=$(C_STANDARD) \
 		-DUCLIENT_C_STANDARD=$(C_STANDARD);
